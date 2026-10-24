@@ -6,4 +6,6 @@ __pycache__/
 output/
 *.pt
 sample_videos/
+web/node_modules/
+web/dist/
 

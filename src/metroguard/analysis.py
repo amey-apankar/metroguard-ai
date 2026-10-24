@@ -95,15 +95,19 @@ def analyze_video(
                     inside_frames[track_id] = inside_frames[track_id] + 1 if inside else 0
                     angle = torso_angle_degrees(keypoints, confidence)
                     fallen = inside and angle is not None and angle >= float(camera.get("fall_torso_angle_degrees", 60))
-                    dwell = inside_frames[track_id] >= int(camera.get("intrusion_dwell_frames", 12))
-                    severity = "critical" if fallen else "warning" if dwell else "caution" if inside else "nominal"
-                    color = (0, 0, 255) if fallen else (0, 165, 255) if dwell else (0, 220, 255) if inside else (50, 200, 50)
+                    
+                    train_eta = camera.get("train_eta_seconds", 120)
+                    from metroguard.crowd_threat import compute_threat_score
+                    threat_score, severity = compute_threat_score(fallen, inside_frames[track_id], inside, train_eta)
+                    
+                    color = (0, 0, 255) if severity == "critical" else (0, 165, 255) if severity == "warning" else (0, 220, 255) if severity == "caution" else (50, 200, 50)
                     cv2.rectangle(canvas, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color, 2)
                     cv2.circle(canvas, foot, 5, color, -1)
-                    label = f"ID {track_id} | {severity.upper()}"
+                    label = f"ID {track_id} | {severity.upper()} ({threat_score}%)"
                     if angle is not None:
-                        label += f" | tilt {angle:.0f} deg"
+                        label += f" | tilt {angle:.0f}°"
                     cv2.putText(canvas, label, (int(box[0]), max(20, int(box[1]) - 8)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                    
                     if severity in ("warning", "critical"):
                         kind = "track_fall" if fallen else "persistent_intrusion"
                         key = (track_id, kind)
@@ -112,11 +116,19 @@ def analyze_video(
                             event_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
                             event_dir = output_root / event_id
                             event_dir.mkdir(parents=True, exist_ok=True)
+                            
+                            # Save evidence frame
                             cv2.imwrite(str(event_dir / "evidence.jpg"), canvas)
+                            
+                            # Save skeletal pose overlay frame
+                            pose_canvas = result.plot()
+                            cv2.imwrite(str(event_dir / "pose_overlay.jpg"), pose_canvas)
+                            
                             event = {
                                 "event_id": event_id,
                                 "event_type": kind,
                                 "severity": severity,
+                                "threat_score": threat_score,
                                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
                                 "camera_id": camera.get("camera_id", "local-video"),
                                 "track_id": int(track_id),
@@ -124,12 +136,36 @@ def analyze_video(
                                 "video_time_seconds": frame_index / fps if fps > 0 else None,
                                 "dwell_frames": inside_frames[track_id],
                                 "torso_tilt_degrees": angle,
-                                "train_eta_seconds": camera.get("train_eta_seconds"),
+                                "train_eta_seconds": train_eta,
                                 "response_mode": "simulated",
                                 "evidence_image": "evidence.jpg",
+                                "pose_overlay_image": "pose_overlay.jpg",
+                                "train_hold_asserted": (severity == "critical"),
                             }
+                            
+                            # Generate PA speech audio file
+                            from metroguard.pa_agent import compose_announcement_text, generate_speech_sync
+                            script = compose_announcement_text(
+                                event_type=kind,
+                                track_id=int(track_id),
+                                platform=camera.get("camera_id", "Platform 2"),
+                                train_id="Train 104",
+                                train_eta_seconds=train_eta,
+                            )
+                            event["announcement_script"] = script
+                            audio_path = event_dir / "announcement.mp3"
+                            if generate_speech_sync(script, audio_path):
+                                event["announcement_audio"] = "announcement.mp3"
+                                
+                            # Generate Copilot 3-bullet SOP incident report
+                            from metroguard.copilot import generate_incident_report
+                            report_md = generate_incident_report(event)
+                            (event_dir / "report.md").write_text(report_md, encoding="utf-8")
+                            event["report_markdown"] = report_md
+                            
                             (event_dir / "event.json").write_text(json.dumps(event, indent=2), encoding="utf-8")
                             events.append(event)
+
 
             elapsed = max(time.perf_counter() - started, 1e-6)
             stats = {"fps": frame_index / elapsed, "people": int(len(boxes)) if boxes is not None else 0, "frame": frame_index}

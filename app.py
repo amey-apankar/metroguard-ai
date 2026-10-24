@@ -102,10 +102,27 @@ if summary:
             label = f"{event['severity'].upper()} · {event['event_type'].replace('_', ' ').title()} · track {event['track_id']} · frame {event['frame_index']}"
             with st.expander(label):
                 event_dir = ROOT / "output" / "events" / event["event_id"]
-                st.image(str(event_dir / "evidence.jpg"), caption="Locally stored event evidence")
+                col_img1, col_img2 = st.columns(2)
+                with col_img1:
+                    if (event_dir / "evidence.jpg").is_file():
+                        st.image(str(event_dir / "evidence.jpg"), caption="1. CCTV Evidence Frame")
+                with col_img2:
+                    if (event_dir / "pose_overlay.jpg").is_file():
+                        st.image(str(event_dir / "pose_overlay.jpg"), caption="2. Skeletal Keypoint Diagnostic")
+                        
+                if (event_dir / "announcement.mp3").is_file():
+                    st.caption("🔊 Autonomous PA Voice Broadcast:")
+                    st.audio(str(event_dir / "announcement.mp3"))
+                    
+                if (event_dir / "report.md").is_file():
+                    st.caption("🤖 OpenAI Incident Copilot SOP Report:")
+                    st.markdown((event_dir / "report.md").read_text(encoding="utf-8"))
+                    
+                st.caption("Telemetry Record:")
                 st.json(event)
-                if event["severity"] == "critical":
-                    st.warning("TRAIN HOLD / MARSHAL DISPATCH ARE SIMULATED. Follow station procedures and verify the event.")
+                if event.get("severity") == "critical":
+                    st.error("🚨 CRITICAL ALERT: TRAIN HOLD & EMERGENCY MARSHAL DISPATCH TRIGGERED (SIMULATED).")
+
     else:
         st.info("No persistent intrusion or fall event was detected in this clip.")
 
