@@ -1,0 +1,6 @@
+opencv-python>=4.9,<5
+ultralytics>=8.2,<9
+streamlit>=1.35,<2
+python-dotenv>=1.0,<2
+PyYAML>=6,<7
+

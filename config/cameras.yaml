@@ -1,0 +1,15 @@
+default_camera:
+  camera_id: "demo-platform-01"
+  use_case: "platform_fall_and_intrusion"
+  # Normalized x/y points (0.0-1.0), clockwise, relative to the selected video frame.
+  # Replace these starter values with a polygon calibrated for the chosen camera view.
+  danger_zone:
+    - [0.05, 0.70]
+    - [0.95, 0.70]
+    - [0.99, 0.99]
+    - [0.01, 0.99]
+  # Demo thresholds. Tune per camera after reviewing representative clips.
+  intrusion_dwell_frames: 12
+  fall_torso_angle_degrees: 60
+  train_eta_seconds: 120
+
