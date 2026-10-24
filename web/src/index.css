@@ -1,0 +1,103 @@
+:root {
+  --bg-main: #06090e;
+  --bg-surface: #0c1219;
+  --bg-card: #121a24;
+  --bg-glass: rgba(18, 26, 36, 0.75);
+  --border-subtle: #1c2936;
+  --border-active: #2a3e52;
+  --text-main: #e2e8f0;
+  --text-muted: #859bb0;
+  --color-nominal: #10b981;
+  --color-caution: #f59e0b;
+  --color-warning: #f97316;
+  --color-critical: #ef4444;
+  --color-accent: #0ea5e9;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-active);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b536b;
+}
+
+/* Animations */
+@keyframes pulse-red {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5), inset 0 0 15px rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(239, 68, 68, 0.85), inset 0 0 25px rgba(239, 68, 68, 0.4);
+    border-color: #f87171;
+  }
+}
+
+@keyframes pulse-amber {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+    border-color: #f59e0b;
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.7);
+    border-color: #fbbf24;
+  }
+}
+
+.flash-emergency {
+  animation: pulse-red 1.2s infinite ease-in-out;
+}
+
+.flash-warning {
+  animation: pulse-amber 1.8s infinite ease-in-out;
+}
+
+.glow-nominal {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.25);
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.tactical-header {
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mono-value {
+  font-family: var(--font-mono);
+}

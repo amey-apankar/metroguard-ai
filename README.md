@@ -1,37 +1,85 @@
-# MetroGuard AI
+# MetroGuard AI — Next-Gen Autonomous Metro Platform Safety Copilot
 
-MetroGuard is a local-first video analytics prototype for Pune Metro station safety use cases. It processes video on the local machine and records structured incident evidence locally. Train telemetry, public address, and train hold actions are simulated in this prototype.
+MetroGuard AI is an operator-grade, local-first safety and incident response co-pilot for metro platform operations. It transforms passive platform CCTV into an **active guardian** that intervenes in the critical 15–30 seconds before potential train impact.
 
-## Current milestone
+---
 
-The first implementation milestone establishes a runnable local video-analysis loop for platform fall and intrusion review. The Pune Metro use-case brief identifies five target areas: platform/track/escalator falls, ticket queue thresholds, loitering or intrusion near Pump Rooms/DG Rooms/fencing, physical encounters, and unattended baggage. The supplied brief provides use-case descriptions and CCTV camera models; it does not include labeled footage, camera calibration, operational thresholds, or live train telemetry. The other four detectors therefore remain planned until suitable footage and thresholds are available.
+## Key Features
 
-## Setup
+1. **Tactical Command Center Dashboard (React + Vite)**:
+   - Modern dark-mode high-contrast control-room HUD with real-time telemetry cards (CBTC Train ETA, Signal Interlock status, Passenger counts, Vision inference FPS).
+   - Live CCTV stream with toggleable overlays: Danger Zone polygon, YOLOv8 Skeletal Keypoint diagnostics, and Crowd Density Heatmap.
+   - Interactive Signal Interlock control (`NORMAL` / `EMERGENCY TRAIN HOLD`).
+   - Autonomous Public Address (PA) Voice Agent control with speaker mute/unmute and manual alert broadcast test.
 
-Use Python 3.11 or newer. Create a virtual environment, install `requirements.txt`, and place the supplied YOLO pose weights at `yolov8n-pose.pt` in the project root (or set `METROGUARD_MODEL`).
+2. **Computer Vision & Skeletal Fall Detection**:
+   - **YOLOv8-Pose Nano** running 100% locally on CPU/GPU.
+   - **ByteTrack** multi-object persistent tracking across frames.
+   - Ground contact foot point calculation & polygon boundary collision detection.
+   - Torso angle tilt computation ($> 60^\circ$ orientation) distinguishing slips/falls from upright standing.
+
+3. **CBTC Train Telemetry & Dynamic Threat Matrix**:
+   - Dynamic Threat Score ($0 - 100\%$) scaling with posture, zone dwell frames, and approaching train ETA countdown.
+   - Automated escalation tiers: Tier 1 (Caution), Tier 2 (Warning), Tier 3 (Critical Emergency).
+
+4. **Autonomous PA Voice Agent & Evidence Packaging**:
+   - Bilingual audio warnings synthesized via Edge-TTS / local speech synthesis.
+   - Automatic archiving into `output/events/<event_id>/`:
+     - `evidence.jpg` (annotated CCTV snapshot)
+     - `pose_overlay.jpg` (skeletal diagnostic visualization)
+     - `announcement.mp3` (synthesized voice warning)
+     - `event.json` (structured machine telemetry)
+     - `report.md` (OpenAI 3-bullet SOP incident report)
+
+5. **OpenAI Incident Copilot**:
+   - Structured 3-bullet Standard Operating Procedure (SOP) dispatch briefing (`Observed Facts`, `Threat Assessment`, `SOP Action Items`).
+   - Interactive Q&A chat for station controllers (e.g. asking for summaries or active threats), with instant offline fallback.
+
+6. **Streamlit Reviewer (Alternative Dashboard)**:
+   - File upload or sample video analysis with frame-by-frame progress and event inspector.
+
+---
+
+## Getting Started
+
+### 1. Requirements & Setup
+- Python 3.11+
+- Node.js 18+ (tested on v24)
+- Place `yolov8n-pose.pt` in the project root.
 
 ```powershell
-py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+# Install Python backend dependencies
+pip install -r requirements.txt
+
+# Install Web dashboard dependencies
+cd web
+npm install
+npm run build
+cd ..
+```
+
+### 2. Launch the Tactical Command Center (Recommended)
+
+Run the unified FastAPI server:
+```powershell
+python -m metroguard.server
+```
+Then open your browser to **`http://localhost:8000`** (or run `npm run dev` in `web/` on port 5173 with proxy).
+
+### 3. Launch the Streamlit Inspector (Alternative)
+
+```powershell
 streamlit run app.py
 ```
 
-Choose a local MP4, set the danger-zone polygon in normalized frame coordinates, and start analysis. The polygon coordinates are editable in `config/cameras.yaml`. Use the included `sample_videos/fall_test.mp4` for a local demonstration when present; media and model weights are excluded from Git.
+---
 
-## Privacy and prototype limits
+## Demonstration Script & Acceptance Criteria
 
-Video frames and model inference stay on the local machine. Events save to `output/events/`. No OpenAI integration or network upload is enabled by this first milestone. This is an operator decision-support demo, not a certified railway safety system. Any alert and response must be reviewed by a human operator.
-
-## Pune Metro use-case roadmap
-
-1. Platform and track intrusion/fall event detection, local event evidence, and operator dashboard.
-2. Camera profiles for escalator falls and configurable station zones.
-3. Queue counting and threshold alerts for ticketing areas.
-4. Restricted-area entry and loitering alerts.
-5. Unattended-object persistence and person/object association.
-6. Physical-encounter behavior alerts, validated with representative footage.
-7. Optional simulated train ETA, PA, marshal dispatch, and train-hold UI; keep these explicitly simulated.
-
-The Honeywell camera models listed in the supplied brief are Fixed Box HCD8G, Mini Dome H4W8PR2, Bullet HBL6GR2, and PTZ HDZP304DI. Model numbers are reference metadata only; no vendor-specific stream integration is implemented.
-
+1. **Nominal State**: Open `http://localhost:8000`. Observe live CCTV feed, train ETA countdown, and green safe platform polygon.
+2. **Loitering / Warning**: As passenger lingers near edge, threat level escalates to Amber / Warning with dwell tracking.
+3. **Critical Emergency**: When track fall occurs or person enters danger zone with train approaching ($< 45\text{s}$ ETA):
+   - HUD flashes red **CRITICAL HAZARD**.
+   - Autonomous PA Voice speaks localized warning aloud.
+   - Simulated **EMERGENCY TRAIN HOLD** interlock is engaged.
+4. **Incident Inspection & AI Copilot**: Click any event in the Incident Log to inspect the dual snapshots (`evidence.jpg` & `pose_overlay.jpg`), listen to the audio broadcast, and review the OpenAI Copilot 3-bullet SOP report.
