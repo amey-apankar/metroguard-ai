@@ -86,9 +86,12 @@ class SystemState:
         ]
         self.fall_torso_angle = 60.0
         self.dwell_threshold = 12
+        self.openai_api_key = os.environ.get("OPENAI_API_KEY", "")
 
     def to_dict(self):
         with self.lock:
+            has_brain = bool(self.openai_api_key and len(self.openai_api_key) > 8)
+            masked_key = (self.openai_api_key[:7] + "..." + self.openai_api_key[-4:]) if has_brain else ""
             return {
                 "running": self.running,
                 "paused": self.paused,
@@ -107,7 +110,12 @@ class SystemState:
                 "show_danger_zone": self.show_danger_zone,
                 "show_skeleton": self.show_skeleton,
                 "show_heatmap": self.show_heatmap,
+                "has_brain": has_brain,
+                "brain_model": "gpt-4o-mini (Reasoning Engine)",
+                "vision_engine": "YOLOv8-Pose Nano (Visual Eyes)",
+                "masked_api_key": masked_key,
             }
+
 
 
 state = SystemState()
@@ -283,8 +291,8 @@ def video_worker_loop():
                         generate_speech_sync(pa_script, event_dir / "announcement.mp3")
                         event_data["announcement_audio"] = f"/api/events/{event_id}/announcement.mp3"
                         
-                        # Generate Copilot SOP Report
-                        report_md = generate_incident_report(event_data)
+                        # Generate Copilot SOP Report (OpenAI GPT-4o-mini Brain with Offline Fallback)
+                        report_md = generate_incident_report(event_data, api_key=state.openai_api_key)
                         (event_dir / "report.md").write_text(report_md, encoding="utf-8")
                         event_data["report_markdown"] = report_md
                         
@@ -434,8 +442,22 @@ def handle_interlock(payload: InterlockAction):
     return {"status": "ok", "signal_interlock": state.signal_interlock}
 
 
-class CopilotChatRequest(BaseModel):
-    query: str
+class OpenAIConfigModel(BaseModel):
+    api_key: str
+
+
+@app.post("/api/config/openai")
+def configure_openai(payload: OpenAIConfigModel):
+    key = payload.api_key.strip()
+    with state.lock:
+        state.openai_api_key = key
+        os.environ["OPENAI_API_KEY"] = key
+    return {
+        "status": "ok",
+        "has_brain": bool(key),
+        "masked_api_key": (key[:7] + "..." + key[-4:]) if len(key) > 8 else "",
+        "message": "OpenAI Neural Reasoning Brain connected successfully!" if key else "Operating in offline rule-based mode."
+    }
 
 
 @app.post("/api/copilot/chat")
@@ -443,8 +465,10 @@ def chat_copilot(req: CopilotChatRequest):
     """Interactive incident copilot Q&A endpoint."""
     with state.lock:
         recent = list(state.events_log[:5])
-    answer = copilot_query_chat(req.query, recent)
+        key = state.openai_api_key
+    answer = copilot_query_chat(req.query, recent, api_key=key)
     return {"reply": answer}
+
 
 
 class TriggerPAModel(BaseModel):

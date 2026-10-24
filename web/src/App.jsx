@@ -42,12 +42,19 @@ export default function App() {
     show_danger_zone: true,
     show_skeleton: true,
     show_heatmap: false,
-    danger_zone: [[0.05, 0.70], [0.95, 0.70], [0.99, 0.99], [0.01, 0.99]]
+    danger_zone: [[0.05, 0.70], [0.95, 0.70], [0.99, 0.99], [0.01, 0.99]],
+    has_brain: false,
+    brain_model: "gpt-4o-mini (Reasoning Engine)",
+    vision_engine: "YOLOv8-Pose Nano (Visual Eyes)",
+    masked_api_key: ""
   });
 
   const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [paMuted, setPaMuted] = useState(false);
+  const [showBrainModal, setShowBrainModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [brainStatusMsg, setBrainStatusMsg] = useState('');
   const [chatMessages, setChatMessages] = useState([
     {
       role: 'assistant',
@@ -61,6 +68,29 @@ export default function App() {
 
   // Audio announcer reference for automated alerts
   const lastAnnouncedEventRef = useRef(null);
+
+  const saveOpenAIKey = async (e) => {
+    e.preventDefault();
+    if (!apiKeyInput.trim()) return;
+    try {
+      const res = await fetch('/api/config/openai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: apiKeyInput.trim() })
+      });
+      const data = await res.json();
+      setBrainStatusMsg(data.message || 'Key saved successfully');
+      setTelemetry((prev) => ({
+        ...prev,
+        has_brain: data.has_brain,
+        masked_api_key: data.masked_api_key
+      }));
+      setTimeout(() => setShowBrainModal(false), 1200);
+    } catch (err) {
+      setBrainStatusMsg('Failed to update OpenAI key');
+    }
+  };
+
 
   // Poll system status every 600ms
   useEffect(() => {
@@ -303,6 +333,26 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setShowBrainModal(true)}
+              style={{
+                padding: '8px 14px',
+                borderRadius: '6px',
+                border: telemetry.has_brain ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(168, 85, 247, 0.4)',
+                backgroundColor: telemetry.has_brain ? 'rgba(16, 185, 129, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+                color: telemetry.has_brain ? '#34d399' : '#c084fc',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+              }}
+            >
+              <Sparkles size={16} />
+              <span>{telemetry.has_brain ? `BRAIN ACTIVE (${telemetry.masked_api_key})` : 'CONNECT OPENAI BRAIN'}</span>
+            </button>
+
+            <button
               onClick={triggerManualBroadcast}
               style={{
                 padding: '8px 14px',
@@ -440,6 +490,77 @@ export default function App() {
               </div>
             </div>
           </div>
+
+          {/* AI Architecture Pipeline Banner: YOLO Eyes + OpenAI Brain */}
+          <div
+            className="glass-panel"
+            style={{
+              padding: '10px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(90deg, rgba(14, 165, 233, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+              border: '1px solid rgba(14, 165, 233, 0.3)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* EYES LAYER */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(56, 189, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                  <Camera size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.65rem', color: '#38bdf8', fontWeight: 700, letterSpacing: '0.05em' }}>VISUAL SENSORY EYES</div>
+                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', fontWeight: 600 }}>YOLOv8-Pose (Local Real-Time)</div>
+                </div>
+              </div>
+
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>➔</div>
+
+              {/* SPATIAL / CBTC LAYER */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                  <ShieldAlert size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 700, letterSpacing: '0.05em' }}>SPATIAL SAFETY MATRIX</div>
+                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', fontWeight: 600 }}>Polygon Boundary + CBTC ETA</div>
+                </div>
+              </div>
+
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>➔</div>
+
+              {/* BRAIN LAYER */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: telemetry.has_brain ? 'rgba(16, 185, 129, 0.2)' : 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: telemetry.has_brain ? '#34d399' : '#c084fc' }}>
+                  <Sparkles size={16} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.65rem', color: telemetry.has_brain ? '#34d399' : '#c084fc', fontWeight: 700, letterSpacing: '0.05em' }}>COGNITIVE REASONING BRAIN</div>
+                  <div style={{ fontSize: '0.78rem', color: '#f1f5f9', fontWeight: 600 }}>
+                    {telemetry.has_brain ? `OpenAI GPT-4o-mini (${telemetry.masked_api_key})` : 'Offline SOP Dispatch Engine'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowBrainModal(true)}
+              style={{
+                padding: '4px 12px',
+                fontSize: '0.72rem',
+                borderRadius: '4px',
+                backgroundColor: telemetry.has_brain ? 'rgba(16, 185, 129, 0.2)' : '#0ea5e9',
+                color: '#fff',
+                border: telemetry.has_brain ? '1px solid #10b981' : 'none',
+                cursor: 'pointer',
+                fontWeight: 600,
+              }}
+            >
+              {telemetry.has_brain ? 'MANAGE BRAIN KEY' : 'CONFIGURE API KEY'}
+            </button>
+          </div>
+
 
           {/* Primary CCTV Live Viewport */}
           <div
@@ -884,6 +1005,137 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* OpenAI Neural Brain Setup Modal */}
+      {showBrainModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 110,
+            padding: '24px',
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              width: '540px',
+              padding: '28px',
+              backgroundColor: '#0c1219',
+              border: '1px solid #38bdf8',
+              borderRadius: '12px',
+              boxShadow: '0 0 30px rgba(14, 165, 233, 0.3)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c084fc' }}>
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="tactical-header" style={{ fontSize: '1.1rem', color: '#fff' }}>
+                    OPENAI BRAIN CONFIGURATION
+                  </h3>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                    YOLO provides the Eyes · OpenAI acts as the Cognitive Brain
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBrainModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '1.2rem',
+                  cursor: 'pointer',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-surface)', padding: '14px', borderRadius: '8px', border: '1px solid var(--border-subtle)', fontSize: '0.8rem', lineHeight: 1.5, color: '#94a3b8' }}>
+              <div style={{ color: '#38bdf8', fontWeight: 600, marginBottom: '4px' }}>👁️ YOLO Eyes:</div>
+              Local high-FPS skeletal posture, ground-foot collision, and danger zone tracking.
+              <div style={{ color: '#c084fc', fontWeight: 600, marginTop: '8px', marginBottom: '4px' }}>🧠 OpenAI Brain:</div>
+              Ingests raw numerical telemetry, reasons about passenger hazards, computes dynamic dispatch SOPs, and powers conversational station Q&A.
+            </div>
+
+            <form onSubmit={saveOpenAIKey} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', color: '#cbd5e1', display: 'block', marginBottom: '6px' }}>
+                  OpenAI API Key (sk-...)
+                </label>
+                <input
+                  type="password"
+                  placeholder={telemetry.has_brain ? `Current Key: ${telemetry.masked_api_key}` : "Enter your sk-... key"}
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-subtle)',
+                    backgroundColor: 'var(--bg-card)',
+                    color: '#fff',
+                    fontSize: '0.85rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+
+              {brainStatusMsg && (
+                <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 500 }}>
+                  {brainStatusMsg}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBrainModal(false)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    backgroundColor: 'transparent',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '8px 20px',
+                    borderRadius: '6px',
+                    backgroundColor: '#0ea5e9',
+                    border: 'none',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                  }}
+                >
+                  CONNECT BRAIN
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
