@@ -91,7 +91,6 @@ class SystemState:
     def to_dict(self):
         with self.lock:
             has_brain = bool(self.openai_api_key and len(self.openai_api_key) > 8)
-            masked_key = (self.openai_api_key[:7] + "..." + self.openai_api_key[-4:]) if has_brain else ""
             return {
                 "running": self.running,
                 "paused": self.paused,
@@ -113,8 +112,8 @@ class SystemState:
                 "has_brain": has_brain,
                 "brain_model": "gpt-4o-mini (Reasoning Engine)",
                 "vision_engine": "YOLOv8-Pose Nano (Visual Eyes)",
-                "masked_api_key": masked_key,
             }
+
 
 
 
@@ -455,9 +454,9 @@ def configure_openai(payload: OpenAIConfigModel):
     return {
         "status": "ok",
         "has_brain": bool(key),
-        "masked_api_key": (key[:7] + "..." + key[-4:]) if len(key) > 8 else "",
-        "message": "OpenAI Neural Reasoning Brain connected successfully!" if key else "Operating in offline rule-based mode."
+        "message": "OpenAI Neural Reasoning Brain connected securely on backend." if key else "Operating in offline rule-based mode."
     }
+
 
 
 @app.post("/api/copilot/chat")

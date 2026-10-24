@@ -45,8 +45,7 @@ export default function App() {
     danger_zone: [[0.05, 0.70], [0.95, 0.70], [0.99, 0.99], [0.01, 0.99]],
     has_brain: false,
     brain_model: "gpt-4o-mini (Reasoning Engine)",
-    vision_engine: "YOLOv8-Pose Nano (Visual Eyes)",
-    masked_api_key: ""
+    vision_engine: "YOLOv8-Pose Nano (Visual Eyes)"
   });
 
   const [events, setEvents] = useState([]);
@@ -79,17 +78,21 @@ export default function App() {
         body: JSON.stringify({ api_key: apiKeyInput.trim() })
       });
       const data = await res.json();
-      setBrainStatusMsg(data.message || 'Key saved successfully');
+      setBrainStatusMsg(data.message || 'Key securely stored on backend');
+      setApiKeyInput(''); // Clear key immediately from frontend memory
       setTelemetry((prev) => ({
         ...prev,
-        has_brain: data.has_brain,
-        masked_api_key: data.masked_api_key
+        has_brain: data.has_brain
       }));
-      setTimeout(() => setShowBrainModal(false), 1200);
+      setTimeout(() => {
+        setShowBrainModal(false);
+        setBrainStatusMsg('');
+      }, 1200);
     } catch (err) {
       setBrainStatusMsg('Failed to update OpenAI key');
     }
   };
+
 
 
   // Poll system status every 600ms
@@ -349,8 +352,9 @@ export default function App() {
               }}
             >
               <Sparkles size={16} />
-              <span>{telemetry.has_brain ? `BRAIN ACTIVE (${telemetry.masked_api_key})` : 'CONNECT OPENAI BRAIN'}</span>
+              <span>{telemetry.has_brain ? 'OPENAI BRAIN ACTIVE' : 'CONNECT OPENAI BRAIN'}</span>
             </button>
+
 
             <button
               onClick={triggerManualBroadcast}
@@ -538,8 +542,9 @@ export default function App() {
                 <div>
                   <div style={{ fontSize: '0.65rem', color: telemetry.has_brain ? '#34d399' : '#c084fc', fontWeight: 700, letterSpacing: '0.05em' }}>COGNITIVE REASONING BRAIN</div>
                   <div style={{ fontSize: '0.78rem', color: '#f1f5f9', fontWeight: 600 }}>
-                    {telemetry.has_brain ? `OpenAI GPT-4o-mini (${telemetry.masked_api_key})` : 'Offline SOP Dispatch Engine'}
+                    {telemetry.has_brain ? 'OpenAI GPT-4o-mini (Neural Backend Connected)' : 'Offline SOP Dispatch Engine'}
                   </div>
+
                 </div>
               </div>
             </div>
@@ -1077,9 +1082,10 @@ export default function App() {
                 </label>
                 <input
                   type="password"
-                  placeholder={telemetry.has_brain ? `Current Key: ${telemetry.masked_api_key}` : "Enter your sk-... key"}
+                  placeholder={telemetry.has_brain ? "••••••••••••••••••••••••••••••••" : "Paste your sk-... key securely"}
                   value={apiKeyInput}
                   onChange={(e) => setApiKeyInput(e.target.value)}
+
                   style={{
                     width: '100%',
                     padding: '10px 14px',
